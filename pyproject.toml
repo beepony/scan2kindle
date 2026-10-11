@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scan2kindle"
+version = "0.1.0"
+description = "Convert scanned PDF books into reflowable EPUB and Kindle AZW3 files with macOS Vision OCR"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "beepony" }]
+keywords = ["pdf", "epub", "kindle", "azw3", "ocr", "scanned-books", "macos"]
+classifiers = [
+  "Environment :: Console",
+  "Intended Audience :: End Users/Desktop",
+  "Natural Language :: Chinese (Simplified)",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Topic :: Text Processing :: Markup",
+]
+dependencies = [
+  "numpy>=1.26",
+  "Pillow>=10",
+  "PyMuPDF>=1.24",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+scan2kindle = "scan2kindle.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/beepony/scan2kindle"
+Issues = "https://github.com/beepony/scan2kindle/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+scan2kindle = ["vision_ocr.swift"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
