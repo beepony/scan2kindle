@@ -1,21 +1,48 @@
 # scan2kindle
 
-Convert **scanned PDF books** into **reflowable EPUB** and **Kindle AZW3** files.
+**Turn image-only scanned PDFs into Kindle-ready EPUB and AZW3 books with resizable text and clickable contents.**
 
-[简体中文](README.md)
+[![Tests](https://github.com/beepony/scan2kindle/actions/workflows/test.yml/badge.svg)](https://github.com/beepony/scan2kindle/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)
 
-Many scanned PDFs are just page images, so text stays tiny on a Kindle and cannot be resized. `scan2kindle` uses OCR, rebuilds paragraphs and navigation, and keeps important images so scanned books are readable on e-ink devices.
+[简体中文](README.md) · [Install with AI](#install-with-ai) · [Quick start](#quick-start) · [How it works](docs/workflow.en.md)
 
-> Platform: macOS. OCR uses Apple's built-in Vision framework and runs offline.
+```text
+Scanned PDF  ->  offline OCR + layout rebuild  ->  EPUB 3 with contents  ->  AZW3
+```
 
-## Install with an AI agent
+## Why scan2kindle
 
-If you use Codex, Claude Code, or another agent that can operate your computer, copy the full prompt below and paste it into the agent. It checks your Mac, installs the tool, creates a PDF folder, runs a test conversion after you add PDFs, and then converts the whole folder.
+Most tools make PDFs searchable or make PDF pages fit an e-reader. scan2kindle focuses on a different job: **rebuilding a scanned book as a real ebook.**
 
-> The prompt processes files locally and does not upload books. Installing developer tools, Python, or Calibre may require you to approve a system prompt or enter your Mac password.
+| Tool | Main output | Difference for scanned-book-to-Kindle conversion |
+| --- | --- | --- |
+| [Calibre](https://manual.calibre-ebook.com/conversion.html#convert-pdf-documents) | EPUB / AZW3 | Its manual calls PDF a poor input format, with limited support for image-based PDFs, columns, and contents |
+| [OCRmyPDF](https://github.com/ocrmypdf/OCRmyPDF) | Searchable PDF | Adds a text layer for search and copy, but keeps a fixed-layout PDF |
+| [k2pdfopt](https://www.willus.com/k2pdfopt/) | Kindle-optimized PDF | Crops and rearranges page images, preserving the look without EPUB navigation |
+| [Marker](https://github.com/datalab-to/marker) | Markdown / JSON / HTML | Strong general document extraction, not focused on Kindle ebook output |
+| **scan2kindle** | **EPUB 3 + AZW3** | **OCR, layout rebuild, contents, figures, and batch conversion in one pipeline** |
+
+## Highlights
+
+- **Truly reflowable**: rebuilds paragraphs in reading order, so text can be resized on Kindle.
+- **Clickable contents**: reads scanned contents pages, including page offsets, unnumbered entries, and books with no contents page.
+- **Built for real scans**: splits two-page spreads, handles one- and two-column pages, removes headers and page numbers, and joins paragraphs across pages.
+- **Keeps what matters**: preserves covers, contents pages, figures, and captions; complex pages stay as images.
+- **Offline and private**: uses macOS Vision OCR with strong Chinese support, no model downloads, no GPU, and no uploads.
+- **Batch-ready**: converts folders recursively, resumes from cache, skips duplicate PDFs, and writes a quality report.
+
+Real-world run: 121 Chinese scanned periodicals (about 4.7 GB), around 0.9 seconds per page and under a minute for a typical 320-page issue. Every EPUB passed EPUBCheck.
+
+## Install with AI
+
+Paste the prompt below into Codex, Claude Code, or another agent that can operate your computer. It installs the tool, creates a PDF folder, waits for your files, runs a test conversion, and then converts the batch.
+
+> Files are processed locally and books are never uploaded. Installing developer tools, Python, or Calibre may require your approval or Mac password.
 
 <details>
-<summary><strong>Show and copy the agent prompt</strong></summary>
+<summary><strong>Show and copy the AI install prompt</strong></summary>
 
 ````text
 Please install the open-source tool scan2kindle on this Mac and guide me through my first conversion.
@@ -154,55 +181,63 @@ Finally, remind me that OCR may still contain a few mistakes, and complex tables
 
 </details>
 
-You can also open the prompt file directly: [prompts/agent-install.en.md](prompts/agent-install.en.md)
+You can also copy it from [prompts/agent-install.en.md](prompts/agent-install.en.md).
 
-## Features
+## Quick start
 
-- Batch-convert PDFs recursively while preserving folder structure.
-- Offline OCR with macOS Vision; Simplified Chinese and English by default.
-- Split two-page scans stored as one wide PDF page.
-- Remove running headers and page numbers; handle one- and two-column pages.
-- Rebuild paragraphs across lines and pages; detect headings, bylines, figures, and captions.
-- Build EPUB navigation from scanned contents pages, or match article opening headings when page numbers or contents pages are missing.
-- Keep covers, contents pages, and image-heavy pages as images.
-- Write EPUB 3 and optionally AZW3 through Calibre.
-- Cache rendered pages and OCR so interrupted batches can resume.
-- Skip byte-identical duplicate PDFs and write a CSV report.
-
-## Install
-
-Requirements: macOS 13+, Python 3.10+, Xcode Command Line Tools, and optionally Calibre for AZW3 output.
+Requires macOS 13+, Python 3.10+, and Xcode Command Line Tools. AZW3 output also needs [Calibre](https://calibre-ebook.com/).
 
 ```zsh
 xcode-select --install
-brew install --cask calibre
+brew install --cask calibre       # optional: AZW3 output
 git clone https://github.com/beepony/scan2kindle.git
 cd scan2kindle
-python3 -m venv .venv
+python3 -m venv .venv             # python3 must be 3.10 or newer
 .venv/bin/python -m pip install -e .
 ```
 
-## Usage
+Test the first 30 pages of one book:
+
+```zsh
+.venv/bin/scan2kindle ~/Books/scans/book.pdf -o /tmp/s2k-test --pages 1-30 --azw3
+```
+
+Convert a whole folder:
 
 ```zsh
 .venv/bin/scan2kindle ~/Books/scans -o ~/Books/kindle --azw3
-.venv/bin/scan2kindle ~/Books/scans/book.pdf -o /tmp/test --pages 1-30
-.venv/bin/scan2kindle ~/Books/scans --languages en-US --book-language en
 ```
 
-Use `--force` to rebuild existing books and `--no-split-spreads` to keep wide pages intact. Run `scan2kindle --help` for all options.
+Prefer not to use Terminal? Double-click `scripts/convert-folder.command` and choose a PDF folder.
 
-Output files are written to `EPUB/`, `AZW3/`, and `conversion-report.csv`. Send EPUB files with Send to Kindle, or copy AZW3 files to the Kindle `documents` folder over USB.
+## Output and Kindle transfer
 
-See [docs/workflow.en.md](docs/workflow.en.md) for the full pipeline.
+```text
+kindle/
+├── EPUB/                  # send with Send to Kindle
+├── AZW3/                  # copy to Kindle's documents folder over USB
+├── conversion-report.csv  # pages, characters, contents entries, OCR quality
+└── .cache/                # OCR cache for resuming
+```
 
-## Limitations
+## Common options
 
-OCR can still contain mistakes. Complex tables, formulas, vertical text, and unusual layouts are usually kept as images. Navigation quality depends on how clearly the scanned book marks its contents and headings.
+| Option | Use |
+| --- | --- |
+| `--azw3` | Also create AZW3 (requires Calibre) |
+| `--pages 1-30` | Convert selected pages for a quick test |
+| `--languages en-US` | Set OCR languages |
+| `--book-language en` | Set the ebook language |
+| `--force` | Rebuild existing books |
+| `--no-split-spreads` | Keep wide scanned pages intact |
 
-## Copyright
+See every option with `.venv/bin/scan2kindle --help`.
 
-This project contains no books. Convert only files you have the right to use, and do not upload copyrighted PDFs or ebooks.
+## Notes
+
+- OCR may still contain small errors; complex tables, formulas, and vertical text are usually kept as images.
+- macOS only for now.
+- This project contains no books. Convert only files you have the right to use, and do not upload or share copyrighted books.
 
 ## License
 
